@@ -1,0 +1,6 @@
+__pycache__
+
+# webui生成的临时文件
+cache
+# 模型文件
+checkpoints
