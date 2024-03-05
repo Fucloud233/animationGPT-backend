@@ -513,9 +513,11 @@ with gr.Blocks(css=customCSS) as demo:
                     container=False)
 
             with gr.Row():
-                aud = gr.Audio(source="microphone",
-                               label="Speak input",
-                               type='filepath')
+                aud = gr.Audio(
+                    # 注释此处才能正常运行
+                    # source="microphone",
+                    label="Speak input",
+                    type='filepath')
                 btn = gr.UploadButton("📁 Upload motion",
                                       elem_id="upload",
                                       file_types=["file"])
@@ -546,11 +548,17 @@ with gr.Blocks(css=customCSS) as demo:
                                    elem_id="language",
                                    value="English")
 
+    # 用户按下回车，提交文本时触发的函数
     txt_msg = txt.submit(
-        add_text, [chatbot, txt, motion_uploaded, data_stored, method],
+        add_text, 
+        [chatbot, txt, motion_uploaded, data_stored, method],
         [chatbot, txt, motion_uploaded, data_stored],
-        queue=False).then(bot, [chatbot, motion_uploaded, data_stored, method],
-                          [chatbot, motion_uploaded, data_stored])
+        queue=False
+    ).then(
+        bot, 
+        [chatbot, motion_uploaded, data_stored, method],
+        [chatbot, motion_uploaded, data_stored]
+    )
 
     txt_msg.then(lambda: gr.update(interactive=True), None, [txt], queue=False)
 
