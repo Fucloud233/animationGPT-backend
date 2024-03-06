@@ -1,11 +1,11 @@
 import requests
-
-import hashlib
 import time
 import uuid
 import json
 
 from pprint import pprint
+
+from utils.hash import hash_string, HashKind
 
 def load_app_key(file_path):
     with open(file_path, "r") as f:
@@ -67,14 +67,7 @@ def returnAuthMap(appKey, appSecret, q):
 '''
 def calculateSign(appKey, appSecret, q, salt, curtime):
     strSrc = appKey + getInput(q) + salt + curtime + appSecret
-    return encrypt(strSrc)
-
-
-def encrypt(strSrc):
-    hash_algorithm = hashlib.sha256()
-    hash_algorithm.update(strSrc.encode('utf-8'))
-    return hash_algorithm.hexdigest()
-
+    return hash_string(strSrc, kind=HashKind.SHA256)
 
 def getInput(input):
     if input is None:
@@ -87,7 +80,6 @@ def doCall(url, header, params, method):
         return requests.get(url, params)
     elif 'post' == method:
         return requests.post(url, params, header)
-
 
 
 URL = 'https://openapi.youdao.com/api'
@@ -109,7 +101,7 @@ def translate(text: str, lang_from: str="zh_CHS", lang_to: str="en" ):
     content = json.loads(str( res.content, 'utf-8'))
     # pprint(content)
     if content['errorCode'] != "0":
-        return (False, )
+        return (False, "")
     else:
         return (True, content['translation'][0])
     
