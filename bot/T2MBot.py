@@ -1,5 +1,3 @@
-import time
-import os
 from pathlib import Path
 
 import torch
@@ -18,6 +16,10 @@ from mGPT.render.pyrender.smpl_render import SMPLRender
 
 PHASE = "webui"
 TASK = "t2m"
+
+MP4_NAME = "video.mp4"
+FEATS_NAME = "feats.npy"
+GIF_NAME = "video.gif"
 
 # Text2Model Bot
 class T2MBot:
@@ -50,7 +52,7 @@ class T2MBot:
         self.model = model
         self.output_dir = output_dir
 
-    def generate_motion(self, input: str, method: str="fast"):
+    def generate_motion(self, input: str, id: str, method: str="fast"):
         # TODO: unknown parameters
         motion_length = 0
         motion_token_string = ""
@@ -78,10 +80,11 @@ class T2MBot:
         out_lengths = outputs["length"][0]
         out_joints = outputs["joints"][:out_lengths].detach().cpu().numpy()
         out_texts = outputs["texts"][0]
-        output_mp4_path, video_fname, output_npy_path, joints_fname = \
         self.render_motion(
             out_joints,
-            out_feats.to('cpu').numpy(), method
+            out_feats.to('cpu').numpy(), 
+            id,
+            method
         )
         
         result['model_output'] = {
@@ -89,23 +92,36 @@ class T2MBot:
             "joints": out_joints,
             "length": out_lengths,
             "texts": out_texts,
-            "motion_video": output_mp4_path,
-            "motion_video_fname": video_fname,
-            "motion_joints": output_npy_path,
-            "motion_joints_fname": joints_fname,
+            # "motion_video": output_mp4_path,
+            # "motion_video_fname": video_fname,
+            # "motion_joints": output_npy_path,
+            # "motion_joints_fname": joints_fname,
         }
 
         return result
     
-    
-    def render_motion(self, data, feats, method='fast'):
-        fname = time.strftime("%Y-%m-%d-%H_%M_%S", time.localtime(
-            time.time())) + str(np.random.randint(10000, 99999))
-        video_fname = fname + '.mp4'
-        feats_fname = fname + '.npy'
-        output_npy_path = os.path.join(self.output_dir, feats_fname)
-        output_mp4_path = os.path.join(self.output_dir, video_fname)
-        np.save(output_npy_path, feats)
+    def render_motion(self, data, feats, fname: str, method='fast'):
+        # 根据时间自动生成文件名
+        # if fname is None:
+        #     fname = time.strftime("%Y-%m-%d-%H_%M_%S", time.localtime(
+        #         time.time())) + str(np.random.randint(10000, 99999))
+        
+        # 创建文件，如果存在则删除该文件所有内容
+        try:
+            folder_name = Path.joinpath(self.output_dir, fname)
+            folder_name.mkdir(parents=True)
+        except FileExistsError:
+            for filename in folder_name.iterdir():
+                filename.unlink()
+        
+        # 生成对应文件的路径
+        # Notice: 此处需要转换为字符串，否则会报错
+        npy_path = str(Path.joinpath(folder_name, FEATS_NAME))
+        mp4_path = str(Path.joinpath(folder_name, MP4_NAME))
+        gif_path = str(Path.joinpath(folder_name, GIF_NAME))
+
+        # 保存npy文件
+        np.save(npy_path, feats)
 
         if method == 'slow':
             if len(data.shape) == 4:
@@ -134,23 +150,18 @@ class T2MBot:
                 vid.append(renderImg)
 
             out = np.stack(vid, axis=0)
-            output_gif_path = output_mp4_path[:-4] + '.gif'
-            imageio.mimwrite(output_gif_path, out, duration=50)
-            out_video = mp.VideoFileClip(output_gif_path)
-            out_video.write_videofile(output_mp4_path)
+            imageio.mimwrite(gif_path, out, duration=50)
+            out_video = mp.VideoFileClip(gif_path)
+            out_video.write_videofile(mp4_path)
             del out, render
 
         elif method == 'fast':
-            output_gif_path = output_mp4_path[:-4] + '.gif'
             if len(data.shape) == 3:
                 data = data[None]
             if isinstance(data, torch.Tensor):
                 data = data.cpu().numpy()
-            pose_vis = plot_3d.draw_to_batch(data, [''], [output_gif_path])
-            out_video = mp.VideoFileClip(output_gif_path)
-            out_video.write_videofile(output_mp4_path)
+
+            pose_vis = plot_3d.draw_to_batch(data, [''], [gif_path])
+            out_video = mp.VideoFileClip(gif_path)
+            out_video.write_videofile(mp4_path)
             del pose_vis
-
-        return output_mp4_path, video_fname, output_npy_path, feats_fname
-
-
