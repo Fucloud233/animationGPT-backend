@@ -10,6 +10,9 @@ import torch
 from visualization.utils.quat import ik_rot, between, fk, ik
 from tqdm import tqdm
 import numpy as np
+
+BVH_TEMPLATE_PATH = './data/template.bvh'
+
 def plot_3d_motion(save_path, kinematic_tree, joints, title, figsize=(10, 10), fps=120, radius=4):
     matplotlib.use('Agg')
 
@@ -74,7 +77,7 @@ def get_grot(glb, parent, offset):
 
 class Joint2BVHConvertor:
     def __init__(self):
-        self.template = BVH.load('./visualization/data/template.bvh', need_quater=True)
+        self.template = BVH.load(BVH_TEMPLATE_PATH, need_quater=True)
         self.re_order = [0, 1, 4, 7, 10, 2, 5, 8, 11, 3, 6, 9, 12, 15, 13, 16, 18, 20, 14, 17, 19, 21]
 
         self.re_order_inv = [0, 1, 5, 9, 2, 6, 10, 3, 7, 11, 4, 8, 12, 14, 18, 13, 15, 19, 16, 20, 17, 21]
@@ -83,7 +86,7 @@ class Joint2BVHConvertor:
         self.template_offset = self.template.offsets.copy()
         self.parents = [-1, 0, 1, 2, 3, 0, 5, 6, 7, 0, 9, 10, 11, 12, 11, 14, 15, 16, 11, 18, 19, 20]
 
-    def convert(self, positions, filename, iterations=10, foot_ik=True):
+    def convert(self, positions: np.ndarray, filename, iterations=10, foot_ik=True):
         '''
         Convert the SMPL joint positions to Mocap BVH
         :param positions: (N, 22, 3)
@@ -176,10 +179,11 @@ if __name__ == "__main__":
     #     joints = np.squeeze(joints, axis=0) # mgpt生成的motion.npy和Momask的npy维度不一样，在此处修改
     #     converter.convert(joints, os.path.join('bvh', f'bvh_{f}'.replace('npy', 'bvh')), foot_ik=False)
 
-    filename = "./cache/1234/feats.npy"
+    filename = "data/BB_000_003102.npy"
     converter = Joint2BVHConvertor()
     joints = np.load(filename)
     joints = np.squeeze(joints, axis=0) # mgpt生成的motion.npy和Momask的npy维度不一样，在此处修改
-    converter.convert(joints, os.path.join('bvh', f'bvh_{f}'.replace('npy', 'bvh')), foot_ik=False)
+    new_filename = filename.replace(".npy", ".bvh")
+    converter.convert(joints, new_filename, foot_ik=False)
     
 
