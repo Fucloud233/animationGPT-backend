@@ -94,16 +94,20 @@ def translate(text: str, lang_from: str="zh_CHS", lang_to: str="en" ):
     addAuthParams(data, CONFIG_PATH)
     header = {'Content-Type': 'application/x-www-form-urlencoded'}
 
-    # 2. 发送请求
-    res = doCall(URL, header, data, 'post')
+    while(True):
+        try:
+            # 2. 发送请求
+            res = doCall(URL, header, data, 'post')
 
-    # 3. 处理请求结果
-    content = json.loads(str( res.content, 'utf-8'))
-    # pprint(content)
-    if content['errorCode'] != "0":
-        return (False, "")
-    else:
-        return (True, content['translation'][0])
+            # 3. 处理请求结果
+            content = json.loads(str( res.content, 'utf-8'))
+            # pprint(content)
+            if content['errorCode'] != "0":
+                return (False, "")
+            else:
+                return (True, content['translation'][0])
+        except:
+            pass
     
 
 if __name__ == "__main__":
