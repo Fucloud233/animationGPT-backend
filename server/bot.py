@@ -1,6 +1,9 @@
 import sys; sys.path.append(".")
 
+
+import os
 from pathlib import Path
+from pprint import pprint
 
 import torch
 import pytorch_lightning as pl
@@ -16,12 +19,116 @@ import mGPT.render.matplot.plot_3d_global as plot_3d
 from mGPT.render.pyrender.hybrik_loc2rot import HybrIKJointsToRotmat
 from mGPT.render.pyrender.smpl_render import SMPLRender
 
-PHASE = "webui"
+# Notice: 使用 webui 保存的npy文件举证维度不正确（待查证）
+PHASE = "demo"
 TASK = "t2m"
 
 MP4_NAME = "video.mp4"
 FEATS_NAME = "feats.npy"
 GIF_NAME = "video.gif"
+
+
+# 来自 demo.py 的代码，用于处理输入文本（意义不明）
+def load_example_input(lines, model):
+    def motion_token_to_string(motion_token, lengths, codebook_size=512):
+        motion_string = []
+        for i in range(motion_token.shape[0]):
+            motion_i = motion_token[i].cpu(
+            ) if motion_token.device.type == 'cuda' else motion_token[i]
+            motion_list = motion_i.tolist()[:lengths[i]]
+            motion_string.append(
+                (f'<motion_id_{codebook_size}>' +
+                ''.join([f'<motion_id_{int(i)}>' for i in motion_list]) +
+                f'<motion_id_{codebook_size + 1}>'))
+        return motion_string
+
+    lines = [line for line in lines if line.strip()]
+    count = 0
+    texts = []
+    
+    # Strips the newline character
+    motion_joints = [torch.zeros((1, 1, 22, 3))] * len(lines)
+    motion_lengths = [0] * len(lines)
+    motion_token_string = ['']
+
+    motion_head = []
+    motion_heading = []
+    motion_tailing = []
+
+    motion_token = torch.zeros((1, 263))
+    
+    for i, line in enumerate(lines):
+        count += 1
+        if len(line.split('#')) == 1:
+            texts.append(line)
+        # Notice 如果输入文本中不包含符号 '#'，则以下的代码没有任何意义
+        else:
+            feat_path = line.split('#')[1].replace('\n', '')
+            if os.path.exists(feat_path):
+                feats = torch.tensor(np.load(feat_path), device=model.device)
+                feats = model.datamodule.normalize(feats)
+
+                motion_lengths[i] = feats.shape[0]
+                motion_token, _ = model.vae.encode(feats[None])
+
+                motion_token_string = motion_token_to_string(
+                    motion_token, [motion_token.shape[1]])[0]
+                motion_token_length = motion_token.shape[1]
+
+                motion_splited = motion_token_string.split('>')
+
+                split = motion_token_length // 5 + 1
+                split2 = motion_token_length // 4 + 1
+                split3 = motion_token_length // 4 * 3 + 1
+
+                motion_head.append(motion_token[:, :motion_token.shape[1] //
+                                                5][0])
+
+                motion_heading.append(feats[:feats.shape[0] // 4])
+
+                motion_tailing.append(feats[feats.shape[0] // 4 * 3:])
+
+                if '<Motion_Placeholder_s1>' in line:
+                    motion_joints[i] = model.feats2joints(
+                        feats)[:, :feats.shape[1] // 5]
+                else:
+                    motion_joints[i] = model.feats2joints(feats)
+
+                motion_split1 = '>'.join(
+                    motion_splited[:split]
+                ) + f'><motion_id_{model.codebook_size+1}>'
+                motion_split2 = f'<motion_id_{model.codebook_size}>' + '>'.join(
+                    motion_splited[split:])
+
+                motion_masked = '>'.join(
+                    motion_splited[:split2]
+                ) + '>' + f'<motion_id_{model.codebook_size+2}>' * (
+                    split3 - split2) + '>'.join(motion_splited[split3:])
+
+            texts.append(
+                line.split('#')[0].replace(
+                    '<motion>', motion_token_string).replace(
+                        '<Motion_Placeholder_s1>', motion_split1).replace(
+                            '<Motion_Placeholder_s2>', motion_split2).replace(
+                                '<Motion_Placeholder_Masked>', motion_masked))
+
+    return_dict = {
+        'text': texts,
+        'motion_joints': motion_joints,
+        'motion_lengths': motion_lengths,
+        'motion_token': motion_token,
+        'motion_token_string': motion_token_string,
+    }
+    if len(motion_head) > 0:
+        return_dict['motion_head'] = motion_head
+
+    if len(motion_heading) > 0:
+        return_dict['motion_heading'] = motion_heading
+
+    if len(motion_tailing) > 0:
+        return_dict['motion_tailing'] = motion_tailing
+
+    return return_dict
 
 # Text2Model Bot
 class T2MBot:
@@ -40,13 +147,11 @@ class T2MBot:
             device = torch.device("cuda")
         else:
             device = torch.device("cpu")
-        
+            
         # create model object
         datamodule = build_data(cfg, phase="test")
-        state_dict = torch.load(cfg.TEST.CHECKPOINTS, map_location="cpu")["state_dict"]
         
         model = build_model(cfg, datamodule)
-        model.load_state_dict(state_dict)
         model.to(device)
 
         # self
@@ -58,6 +163,9 @@ class T2MBot:
         # TODO: unknown parameters
         motion_length = 0
         motion_token_string = ""
+
+        return_dict = load_example_input([input], self.model)
+        text, in_joints = return_dict['text'], return_dict['motion_joints']
 
         prompt = self.model.lm.placeholder_fulfill(
             input, 
@@ -71,36 +179,41 @@ class T2MBot:
         }
 
         batch = {
-            "length": [ motion_length ],
-            "text": [ prompt ]
+            "length": return_dict["motion_lengths"],
+            "text": text
         }
 
         outputs = self.model(batch, task=TASK)
 
         # wrap result
-        out_feats = outputs["feats"][0]
-        out_lengths = outputs["length"][0]
-        out_joints = outputs["joints"][:out_lengths].detach().cpu().numpy()
-        out_texts = outputs["texts"][0]
+        feats = outputs["feats"][0]
+        lengths = outputs["length"]
+        joints = outputs["joints"]
+        texts = outputs["texts"]
+
+        xyz = joints[0][:lengths[0]]
+        xyz = xyz[None]
+
+        try:
+            xyz = xyz.detach().cpu().numpy()
+            xyz_in = in_joints[0][None].detach().cpu().numpy()
+        except:
+            xyz = xyz.detach().numpy()
+            xyz_in = in_joints[0][None].detach().numpy()
+
+        # id = b * batch_size + i
+            
+        np.save("./cache/temp/out.npy", xyz)
+        np.save("./cache/temp/in.npy", xyz_in)
+    
+
+
         self.render_motion(
-            out_joints,
-            out_feats.to('cpu').numpy(), 
+            joints,
+            feats.to('cpu').numpy(), 
             id,
             method
         )
-        
-        result['model_output'] = {
-            "feats": out_feats,
-            "joints": out_joints,
-            "length": out_lengths,
-            "texts": out_texts,
-            # "motion_video": output_mp4_path,
-            # "motion_video_fname": video_fname,
-            # "motion_joints": output_npy_path,
-            # "motion_joints_fname": joints_fname,
-        }
-
-        return result
     
     def render_motion(self, data, feats, fname: str, method='fast'):
         # 根据时间自动生成文件名
@@ -121,6 +234,8 @@ class T2MBot:
         npy_path = str(Path.joinpath(folder_name, FEATS_NAME))
         mp4_path = str(Path.joinpath(folder_name, MP4_NAME))
         gif_path = str(Path.joinpath(folder_name, GIF_NAME))
+
+        print("feats: ", feats.shape)
 
         # 保存npy文件
         np.save(npy_path, feats)
