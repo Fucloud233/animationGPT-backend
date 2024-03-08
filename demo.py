@@ -142,6 +142,8 @@ def main():
         os.environ["CUDA_VISIBLE_DEVICES"] = ",".join(
             str(x) for x in cfg.DEVICE)
         device = torch.device("cuda")
+    else:
+        device = torch.device("cpu")
 
     # Dataset
     datamodule = build_data(cfg)
