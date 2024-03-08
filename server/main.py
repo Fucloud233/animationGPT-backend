@@ -18,6 +18,8 @@ class LangKind(Enum):
     EN = 'en'
     CN = 'cn'
 
+VIDEO_TYPE = "video/mp4"
+
 @app.route("/generate", methods=['POST'])
 def generate():
     # 1. 输入 Prompt，并选择输入的语言
@@ -37,20 +39,17 @@ def generate():
         if not flag:
             return "translate error"
         
-    print("en: ", prompt)
-        
-
     # 4. 通过hash算法将Prompt转换称为16进制，并存储起来
     id = hash_string(prompt)
     
-    # if not Store.check_exist(id):
-    Store.set(id, prompt)
-    bot.generate_motion(prompt, id)
+    if not Store.check_exist(id):
+        Store.set(id, prompt)
+        bot.generate_motion(prompt, id)
 
     # 5. 最后返回视频
     path = Path.joinpath(Path("cache"), id, "video.mp4")
     
-    return send_file(path)
+    return send_file(path,download_name=id, mimetype=VIDEO_TYPE)
 
 
 @app.route("/download", methods=['GET'])
@@ -69,4 +68,4 @@ def download():
     return send_file(bvh_path)
 
 if __name__ == '__main__':
-    app.run(port=8081, host="0.0.0.0", debug = True)
+    app.run(port=8082, host="0.0.0.0", debug = True)
