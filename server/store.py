@@ -61,7 +61,12 @@ class Store:
     
     @staticmethod
     def check_exist(id: str) -> bool:
-        return Store.r.hgetall(id) is {}
+        # print("result: ", Store.r.hgetall(id ))
+
+        result = Store.r.hgetall(id)
+
+        # 判断是否存在的条件 1. 非空 2. 内部有键
+        return result != None and len(result.keys()) > 0
 
     @staticmethod
     def set(id: str, prompt: str):
