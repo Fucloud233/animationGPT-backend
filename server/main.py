@@ -1,14 +1,18 @@
 from enum import Enum
-from flask import Flask, request, send_from_directory, send_file
+from flask import Flask, request, send_file
 from pathlib import Path
 
 from utils.translate import translate
 from utils.hash import hash_string
+from utils.file import FileKind
+from utils.npy2bvh import Joint2BVHConvertor
 from store import Store
 from bot import T2MBot
 
 app = Flask("animationGPT")
 bot = T2MBot()
+converter = Joint2BVHConvertor()
+
 
 class LangKind(Enum):
     EN = 'en'
@@ -33,13 +37,15 @@ def generate():
         if not flag:
             return "translate error"
         
+    print("en: ", prompt)
+        
 
     # 4. 通过hash算法将Prompt转换称为16进制，并存储起来
     id = hash_string(prompt)
     
-    if not Store.check_exist(id):
-        Store.set(id, prompt)
-        bot.generate_motion(prompt, id)
+    # if not Store.check_exist(id):
+    Store.set(id, prompt)
+    bot.generate_motion(prompt, id)
 
     # 5. 最后返回视频
     path = Path.joinpath(Path("cache"), id, "video.mp4")
@@ -49,7 +55,18 @@ def generate():
 
 @app.route("/download", methods=['GET'])
 def download():
-    ...
+    try:
+        id = request.json['id']
+    except KeyError:
+        return "key parameter not found"
+
+    if not Store.check_exist(id):
+        return "Session not found"
+    
+    npy_path = FileKind.NPY.to_cache_path(id)
+    bvh_path = converter.convert(npy_path)
+
+    return send_file(bvh_path)
 
 if __name__ == '__main__':
     app.run(port=8081, host="0.0.0.0", debug = True)
