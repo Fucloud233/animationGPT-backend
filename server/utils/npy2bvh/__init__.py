@@ -1,3 +1,5 @@
+import sys; sys.path.append("./server/utils/npy2bvh")
+
 """将npy文件夹下的npy格式动画转为bvh格式，改编自Momask"""
 
 import visualization.Animation as Animation
@@ -86,7 +88,13 @@ class Joint2BVHConvertor:
         self.template_offset = self.template.offsets.copy()
         self.parents = [-1, 0, 1, 2, 3, 0, 5, 6, 7, 0, 9, 10, 11, 12, 11, 14, 15, 16, 11, 18, 19, 20]
 
-    def convert(self, positions: np.ndarray, filename, iterations=10, foot_ik=True):
+    def convert(self, npy_path: str, bvh_path: str):
+        joints = np.load(npy_path)
+        # mgpt生成的motion.npy和Momask的npy维度不一样，在此处修改
+        joints = np.squeeze(joints, axis=0) 
+        self.__convert(joints, bvh_path, foot_ik=False)
+
+    def __convert(self, positions: np.ndarray, filename, iterations=10, foot_ik=True):
         '''
         Convert the SMPL joint positions to Mocap BVH
         :param positions: (N, 22, 3)
