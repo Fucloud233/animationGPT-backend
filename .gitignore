@@ -1,7 +1,7 @@
 __pycache__
 
 # 临时文件
-cache   
+/cache/
 results 
 
 # 项目依赖
