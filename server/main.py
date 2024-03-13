@@ -19,6 +19,7 @@ class LangKind(Enum):
     CN = 'cn'
 
 VIDEO_TYPE = "video/mp4"
+BVH_TYPE = "application/bvh"
 
 @app.route("/generate", methods=['POST'])
 def generate():
@@ -39,6 +40,8 @@ def generate():
         if not flag:
             return "translate error"
         
+    print(prompt)
+        
     # 4. 通过hash算法将Prompt转换称为16进制，并存储起来
     id = hash_string(prompt)
     
@@ -55,7 +58,7 @@ def generate():
 @app.route("/download", methods=['GET'])
 def download():
     try:
-        id = request.json['id']
+        id = request.args['id']
     except KeyError:
         return "key parameter not found"
 
@@ -63,9 +66,10 @@ def download():
         return "Session not found"
     
     npy_path = FileKind.NPY.to_cache_path(id)
-    bvh_path = converter.convert(npy_path)
+    bvh_path = FileKind.BVH.to_cache_path(id)
+    converter.convert(npy_path, bvh_path)
 
-    return send_file(bvh_path)
+    return send_file(bvh_path, download_name=id, mimetype=BVH_TYPE)
 
 if __name__ == '__main__':
     app.run(port=8082, host="0.0.0.0", debug = True)
