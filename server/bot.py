@@ -80,8 +80,6 @@ class T2MBot:
         # 1. 创建文件，如果存在则删除该文件所有内容
         self.mkdir4result(id)
 
-        print(joints.shape)
-
         # 2. 保存处理骨架信息 (joints)
         xyz = joints[:lengths]
         xyz = xyz[None]
