@@ -13,8 +13,6 @@ class FileKind(Enum):
         return Path.joinpath(Path(BASE_PATH), str(id), self.value)
         
 
-# def get_cache_path(id, kind):
-    
 
 if __name__ == "__main__":
     kind = FileKind.NPY
