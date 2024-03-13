@@ -11,11 +11,16 @@ from simple_cache import SimpleCache
     key -> ssid value -> prompt
     1. generate：向缓冲中添加对应的键值对，对于大多数情况下，会加入inactive队列中
     2. download：下载并不会影响这个缓存的刷新情况。
-    '''
+'''
+
+'''
+    客户端
+'''
 
 class PlusCache(Cache):
     def __init__(self, 
         delete_call_back, 
+        cache_data_path: str = "./cache/data",
         max_num: int=MAX_NUM, 
         active_rate: float=0.7
     ):
@@ -23,7 +28,9 @@ class PlusCache(Cache):
         self.inactive_max_num = max_num - active_rate
 
         self.active_cache = SimpleCache(None, self.active_max_num)
-        self.inactive_cache = SimpleCache(delete_call_back, self.inactive_max_num)
+        self.inactive_cache = SimpleCache(delete_call_back, self.inactive_max_num)        
+
+        self.cache_data_path = cache_data_path
 
     def add(self, key, value):
         # # 如何活跃链表存在，这需要直接刷新到最前，然后将删除的节点放在非活跃情况
@@ -62,11 +69,21 @@ class PlusCache(Cache):
             self.active_cache.update(key, value, False)
         elif self.inactive_cache.check(key):
             self.inactive_cache.update(key, value, False)
+    
+    def save(self):
+        with open(self.cache_data_path, 'w') as f:
+            data = {
+                **self.active_cache.map,
+                **self.inactive_cache.map
+            }
 
     def display(self):
         self.active_cache.display()
         self.inactive_cache.display()
-        
+
+    def set_delete_callback(self, callback):
+        self.set_delete_callback = callback
+
             
 if __name__ == "__main__":
     cache = PlusCache(None, 5)
@@ -89,5 +106,4 @@ if __name__ == "__main__":
             cache.get(value.value)
 
         cache.display()
-        print("------")
     
