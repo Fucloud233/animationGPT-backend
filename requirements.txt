@@ -28,4 +28,5 @@ triangle==20220202
 
 # for server
 flask
-redis
+waitress
+# redis
