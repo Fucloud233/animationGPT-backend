@@ -59,7 +59,7 @@ def generate():
         bot.generate_motion(prompt, id)
         cache.add(id)
     else:
-         logging.info("cache hint!")
+        logging.info("cache hint!")
 
     # 5. 最后返回视频
     path = FileKind.MP4.to_cache_path(id)
