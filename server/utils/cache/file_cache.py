@@ -23,7 +23,10 @@ class DeleteThread(Thread):
     
     def run(self):
         for filename in self.filenames:
-            Path.joinpath(self.cache_path, filename).rmdir()
+            folder = Path.joinpath(self.cache_path, filename)
+            for file in folder.iterdir():
+                file.unlink
+            folder.rmdir() 
 
 class FileCache:
     def __init__(self, cache_path: str, max_count: int=2000, delete_rate: int=0.3):
@@ -44,8 +47,6 @@ class FileCache:
         # 当创建的数量超过最大限制时，则开启新的线程随机删除文件
         if len(self.data) > self.max_count:
             self.__random_delete()
-
-        print(self.data)
 
         return True
 
