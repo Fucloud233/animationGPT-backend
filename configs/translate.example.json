@@ -1,0 +1,8 @@
+{
+    "kind": "youdao",
+    "youdao": {
+        "appKey": "xxx",
+        "appSecret": "xxx"
+    }
+    
+}

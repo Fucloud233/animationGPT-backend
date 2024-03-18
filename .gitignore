@@ -8,3 +8,6 @@ results
 checkpoints    
 deps
 datasets
+
+# 配置文件
+configs/translate.json

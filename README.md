@@ -31,15 +31,16 @@ bash prepare/download_pretrained_models.sh
 ### 翻译 API
 
 由于本项目同时支持中文与英文的输入，但是 LLM 只支持英文输入，因此本项目需要调用外部 API 将中文翻译成英文。
-本项目目前使用的是有道智云的[文本翻译 API](https://ai.youdao.com/DOCSIRMA/html/trans/api/wbfy/index.html)，
-如果需要正常使用，请访问其官网注册账号，并将 APP_KEY 等相关密钥配置在[`configs/translate.json`](./configs/translate.json)中。其配置格式如下。
+目前本项目支持调用的 API 如下，
+如需使用翻译服务，请到对应官网申请密钥，
+然后复制[configs/translate.example.json](./configs/translate.example.json)，
+并删除`example`后缀，此后按照需求填写对应的 key 即可。
 
-```json
-{
-    "appKey": "xxx",
-    "appSecret": "xxx"
-}
-```
+|名称| kind| 所需密钥|
+|--|--|--|
+|[有道智云](https://ai.youdao.com/DOCSIRMA/html/trans/api/wbfy/index.html)|youdao |`appKey`, `appSecret` |
+
+> 注意：本项目运行时只能选择其中一种翻译服务
 
 ## OOP 封装
 

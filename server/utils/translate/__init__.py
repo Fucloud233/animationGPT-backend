@@ -17,9 +17,10 @@ def get_bot():
     BotKind = TranslateBotKind
     try:
         kind = BotKind(config['kind'])
-
+        config = config[kind.value]
         if kind is BotKind.Youdao:
             from youdao_bot import YoudaoBot
+
             return YoudaoBot(config['appKey'], config['appSecret'])
 
     except ValueError:
