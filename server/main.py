@@ -3,7 +3,7 @@ from flask import Flask, request, send_file
 from pathlib import Path
 import logging
 
-from utils.translate import translate
+from utils.translate import get_bot as get_translate_bot
 from utils.hash import hash_string
 from utils.file import FileKind
 from utils.npy2bvh import Joint2BVHConvertor
@@ -15,6 +15,8 @@ from bot import T2MBot
 app = Flask("animationGPT")
 bot = T2MBot()
 converter = Joint2BVHConvertor()
+
+translate_bot = get_translate_bot()
 
 logging.basicConfig(
     filename='results/animation.log', 
@@ -40,15 +42,15 @@ def generate():
 
         # print(prompt, lang)
     except KeyError:
-        return "key parameter not found"
+        return "key parameter not found", 400
     except ValueError:
-        return "the kind of language not supported"
+        return "the kind of language not supported", 400
 
     # 3. 如果输入语言不为英文，则需要调用API翻译
     if lang != LangKind.EN:
-        (flag, prompt) = translate(prompt)
+        (flag, prompt) = translate_bot.translate(prompt)
         if not flag:
-            return "translate error"
+            return "translate error", 500
         
     logging.info("cur prompt: " + prompt)
         
@@ -73,10 +75,10 @@ def download():
     try:
         id = request.args['id']
     except KeyError:
-        return "key parameter not found"
+        return "key parameter not found", 400
 
     if not cache.check(id):
-        return "Session not found"
+        return "Session not found", 404
     
     npy_path = FileKind.NPY.to_cache_path(id)
     bvh_path = FileKind.BVH.to_cache_path(id)
