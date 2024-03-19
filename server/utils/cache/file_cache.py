@@ -25,7 +25,7 @@ class DeleteThread(Thread):
         for filename in self.filenames:
             folder = Path.joinpath(self.cache_path, filename)
             for file in folder.iterdir():
-                file.unlink
+                file.unlink()
             folder.rmdir() 
 
 class FileCache:
