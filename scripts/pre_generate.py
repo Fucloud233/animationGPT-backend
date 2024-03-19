@@ -5,11 +5,13 @@ import json
 import requests
 from tqdm import tqdm
 
-def main(file_path: str):
+def main(file_path: str, k: int=-1):
     with open(file_path, "r") as f:
         prompts = f.readlines()
+    
+    if k == -1: k = len(prompts)
 
-    for prompt in tqdm(prompts):
+    for prompt in tqdm(prompts[0:k]):
         # 通过 requests 请求，生成
         requests.post("http://localhost:8082/generate", json = {
             "prompt": prompt,
@@ -31,4 +33,4 @@ if __name__ == '__main__':
     if len(args) >= 2:
         file_path = args[1]
 
-    main(file_path)
+    main(file_path, 2)
