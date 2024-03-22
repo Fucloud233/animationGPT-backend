@@ -1,6 +1,7 @@
 import sys; sys.path.append("./server/utils/translate")
 import json
 from enum import Enum
+import logging
 
 config_path = "./configs/translate.json"
 
@@ -12,7 +13,13 @@ class TranslateBotKind(Enum):
     Youdao = "youdao"
 
 def get_bot():
-    config = read_config(config_path)
+    try:
+        config = read_config(config_path)
+    except FileNotFoundError as e:
+        logging.error(f"{config_path} not found")
+        from null_bot import NullBot
+
+        return NullBot()
     
     BotKind = TranslateBotKind
     try:

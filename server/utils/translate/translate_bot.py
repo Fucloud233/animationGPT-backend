@@ -1,6 +1,6 @@
 from abc import abstractstaticmethod
 
-class TranlsteBot:
+class TranslateBot:
 
     @abstractstaticmethod
     def check_connect():

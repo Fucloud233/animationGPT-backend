@@ -12,26 +12,29 @@ from utils.cache.file_cache import FileCache
 
 from bot import T2MBot
 
-app = Flask("animationGPT")
-bot = T2MBot()
-converter = Joint2BVHConvertor()
-
-translate_bot = get_translate_bot()
-
-logging.basicConfig(
-    filename='results/animation.log', 
-    format="%(asctime)s: [%(levelname)s] %(message)s ",
-    level=logging.INFO
-) 
-
-cache = FileCache("./cache", max_count=10)
-
 class LangKind(Enum):
     EN = 'en'
     CN = 'cn'
 
 VIDEO_TYPE = "video/mp4"
 BVH_TYPE = "application/bvh"
+
+
+app = Flask("animationGPT")
+with app.app_context():
+    bot = T2MBot()
+    converter = Joint2BVHConvertor()
+
+    logging.basicConfig(
+        filename='results/animation.log', 
+        format="%(asctime)s: [%(levelname)s] %(message)s ",
+        level=logging.INFO
+    ) 
+    
+    translate_bot = get_translate_bot()
+
+    cache = FileCache("./cache", max_count=10)
+
 
 @app.route("/generate", methods=['POST'])
 def generate():
@@ -49,6 +52,7 @@ def generate():
     # 3. 如果输入语言不为英文，则需要调用API翻译
     if lang != LangKind.EN:
         (flag, prompt) = translate_bot.translate(prompt)
+        print("result: ", flag, prompt)
         if not flag:
             return "translate error", 500
         

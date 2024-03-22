@@ -4,7 +4,7 @@ import uuid
 import json
 
 from utils.hash import hash_string, HashKind
-from translate_bot import TranlsteBot
+from translate_bot import TranslateBot
 
 '''
     计算鉴权签名 -
@@ -64,7 +64,7 @@ def doCall(url, header, params, method):
     elif 'post' == method:
         return requests.post(url, params, header)
 
-class YoudaoBot(TranlsteBot):
+class YoudaoBot(TranslateBot):
     URL = 'https://openapi.youdao.com/api'
 
     def __init__(self, 
