@@ -19,6 +19,8 @@ class LangKind(Enum):
 VIDEO_TYPE = "video/mp4"
 BVH_TYPE = "application/bvh"
 
+use_cache = False
+
 
 app = Flask("animationGPT")
 with app.app_context():
@@ -60,12 +62,14 @@ def generate():
         
     # 4. 通过hash算法将Prompt转换称为16进制，并存储起来
     id = hash_string(prompt)
-    
-    if not cache.check(id):
-        bot.generate_motion(prompt, id)
-        cache.add(id)
+    if use_cache:
+        if not cache.check(id):
+            bot.generate_motion(prompt, id)
+            cache.add(id)
+        else:
+            logging.info("cache hint!")
     else:
-        logging.info("cache hint!")
+        bot.generate_motion(prompt, id)
 
     # 5. 最后返回视频
     path = FileKind.MP4.to_cache_path(id)
@@ -91,5 +95,6 @@ def download():
     return send_file(bvh_path, download_name=id, mimetype=BVH_TYPE)
 
 if __name__ == '__main__':
-    from waitress import serve
-    serve(app, port=8082, host="0.0.0.0")
+    # from waitress import serve
+    # serve(app, port=8082, host="0.0.0.0", threaded=True)
+    app.run(port=8082, host="0.0.0.0", threaded=True)
