@@ -4,7 +4,7 @@ from pathlib import Path
 import logging
 
 from utils.translate import get_bot as get_translate_bot
-from utils.hash import hash_string
+from utils.hash import hash_string_with_time
 from utils.file import FileKind
 from utils.npy2bvh import Joint2BVHConvertor
 
@@ -61,7 +61,8 @@ def generate():
     logging.info("cur prompt: " + prompt)
         
     # 4. 通过hash算法将Prompt转换称为16进制，并存储起来
-    id = hash_string(prompt)
+    # Notice: 为了避免对同一示例生成时导致数据丢失的问题，生成id是配合时间戳
+    id = hash_string_with_time(prompt)
     if use_cache:
         if not cache.check(id):
             bot.generate_motion(prompt, id)
@@ -85,14 +86,18 @@ def download():
     except KeyError:
         return "key parameter not found", 400
 
-    if not cache.check(id):
-        return "Session not found", 404
-    
-    npy_path = FileKind.NPY.to_cache_path(id)
-    bvh_path = FileKind.BVH.to_cache_path(id)
-    converter.convert(npy_path, bvh_path)
+    # if not cache.check(id):
+    #     return "Session not found", 404
 
-    return send_file(bvh_path, download_name=id, mimetype=BVH_TYPE)
+    try:
+        npy_path = FileKind.NPY.to_cache_path(id)
+        bvh_path = FileKind.BVH.to_cache_path(id)
+        converter.convert(npy_path, bvh_path)
+
+        return send_file(bvh_path, download_name=id, mimetype=BVH_TYPE)
+    except:
+        return "Session not found", 404
+
 
 if __name__ == '__main__':
     # from waitress import serve
